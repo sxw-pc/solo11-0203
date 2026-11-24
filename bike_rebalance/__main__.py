@@ -5,10 +5,14 @@ from pathlib import Path
 import sqlite3
 import sys
 
+from . import access_map, wayfinding
 from .audit import audit
 from .evidence import minute
 from .replay import GROUPS, TABLES
 from .store import database, history, ingest, recompute, transaction, view
+
+SIGN_ACTIONS = {'survey': access_map.survey, 'suggest': wayfinding.suggest,
+                'point': wayfinding.point, 'follow': wayfinding.follow}
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -26,7 +30,7 @@ def clock(text):
 def parser():
     p = argparse.ArgumentParser(prog="python -m bike_rebalance")
     actions = p.add_subparsers(dest="command", required=True)
-    for name in ("init", "ingest", "fleet", "supply", "cage", "status", "history", "demo", "rebuild", "audit"):
+    for name in ("init", "ingest", "fleet", "supply", "cage", "status", "history", "demo", "rebuild", "audit", "signs"):
         command = actions.add_parser(name)
         command.add_argument("--db", required=True, help="SQLite database path")
         if name in GROUPS:
@@ -35,6 +39,9 @@ def parser():
             command.add_argument("input")
         if name in (*GROUPS, "ingest", "rebuild"):
             command.add_argument("--at", type=clock, help="effective service minute for the current projection")
+        if name == 'signs':
+            command.add_argument('action', choices=SIGN_ACTIONS)
+            command.add_argument('arguments', help='JSON object')
         if name == "history":
             command.add_argument("entity", choices=TABLES)
             command.add_argument("key")
@@ -69,6 +76,13 @@ def run(args, db):
     incoming = getattr(args, "input", None)
     if command == "init":
         return {"status": "INITIALIZED"}
+    if command == 'signs':
+        fields = json.loads(args.arguments)
+        if not isinstance(fields, dict):
+            raise ValueError('expected a signs argument object')
+        with transaction(db, write=True):
+            access_map.setup(db)
+            return SIGN_ACTIONS[args.action](db, **fields)
     if command == "demo":
         return demo(db)
     if incoming:
@@ -94,7 +108,7 @@ def main(argv=None):
     try:
         with database(args.db, readonly=readonly) as db:
             result = run(args, db)
-    except (ValueError, OSError, sqlite3.Error) as error:
+    except (ValueError, TypeError, OSError, sqlite3.Error) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
     print(json.dumps(result, indent=2, ensure_ascii=True, sort_keys=True))
@@ -103,3 +117,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+
