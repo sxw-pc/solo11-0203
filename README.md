@@ -61,3 +61,7 @@ UTF-8 JSON 非空数组。每条记录有唯一的 `id`、`kind` 和非负整数
 | `M-reuse`、`R-mid` | 正式归库释放共享笼，下一车次先占用最后一辆空闲车，于是暂时无法受理取车预约。 |
 
 每批 SQLite 事务写入原文件与 SHA-256、规范事件、文件归属、业务实体及版本差异。同一事件编号可复用相同内容，冲突内容会回滚整批。`rebuild` 从规范事件重放。`audit` 从保留的原文件再次解析，按历次可见文件和时点重放，并校对文件索引、当前实体以及每次变化。
+
+## 公共站点读头巡检
+
+领用前巡检可以另开一份 SQLite 读头台账，保持原停车和调拨证据库独立。运行 python -B -m bike_rebalance.inspection_cli --db reader.sqlite register H-A NORTH 10 登记读头和预计采样周期，使用 accept fixtures/reader-samples.json 导入原始样点，再用 coverage NORTH 0 30 查各读头的实收收据与缺失采样点。

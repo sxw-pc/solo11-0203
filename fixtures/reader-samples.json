@@ -1,0 +1,20 @@
+[
+  {
+    "id": "R20",
+    "reader": "H-A",
+    "tick": 20,
+    "signal": 90
+  },
+  {
+    "id": "R10",
+    "reader": "H-A",
+    "tick": 10,
+    "signal": 92
+  },
+  {
+    "id": "R0",
+    "reader": "H-A",
+    "tick": 0,
+    "signal": 94
+  }
+]
