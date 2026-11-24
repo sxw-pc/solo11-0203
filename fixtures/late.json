@@ -1,0 +1,5 @@
+[
+  {"kind":"scan","id":"G-flex-receive","at":22,"manifest":"M-flex","vehicle":"V-C","stage":"unload","site":"D-EAST","channel":"gate"},
+  {"kind":"scan","id":"G-cargo-load","at":11,"manifest":"M-cargo","vehicle":"V-B","stage":"load","site":"G-NORTH","channel":"gate"},
+  {"kind":"check","id":"Q-D-stop","at":7,"vehicle":"V-D","type":"city","cleared":false}
+]
