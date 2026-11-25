@@ -12,9 +12,9 @@ GROUPS = {
 TABLES = tuple(table for tables in GROUPS.values() for table in tables)
 
 
-def rebuild(events, now):
+def rebuild(events, now, inspection=None):
     events = sorted((e for e in events if e["at"] <= now), key=order)
-    fleet, supply, cage = Fleet(events), Supply(events), Cage()
+    fleet, supply, cage = Fleet(events), Supply(events, inspection), Cage()
 
     def public_return(e):
         fleet.observe_return(e)

@@ -1,11 +1,17 @@
-"""Public dock capacity and reservation commitments."""
+"""Public dock capacity and reservation commitments.
+
+Stations declared in ``inspection`` (a station -> checker mapping, see
+bike_rebalance.readers.checker) keep a space snapshot usable only while the
+reader inspection window since that snapshot still releases it; stations not
+declared there follow the plain snapshot-age rule.
+"""
 from collections import defaultdict
 
 SNAPSHOT_MAX_AGE = 10
 
 
 class Supply:
-    def __init__(self, events):
+    def __init__(self, events, inspection=None):
         self.snapshots = {}
         self.latest = {}
         self.reservations = {}
@@ -13,6 +19,7 @@ class Supply:
         self.movements = defaultdict(list)
         self.dock_redemptions = set()
         self.snapshot_counts = defaultdict(set)
+        self.inspection = inspection or {}
         for e in events:
             if e["kind"] == "space":
                 self.snapshot_counts[e["station"], e["at"]].add(e["free"])
@@ -32,6 +39,11 @@ class Supply:
             return None, "SPACE_STALE", None
         if snapshot["result"] == "SPACE_CONFLICT":
             return None, "SPACE_CONFLICT", snapshot["id"]
+        check = self.inspection.get(station)
+        if check is not None and now > snapshot["at"]:
+            released, _ = check(snapshot["at"], now)
+            if not released:
+                return None, "INSPECTION_MISSING", snapshot["id"]
         total = snapshot["free"] + sum(delta for at, _, delta in self.movements[station]
                                        if at >= snapshot["at"])
         return max(0, total), "SNAPSHOT", snapshot["id"]
