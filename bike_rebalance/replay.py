@@ -7,7 +7,7 @@ from .supply import Supply
 GROUPS = {
     "fleet": ("vehicles", "returns", "checks"),
     "supply": ("snapshots", "reservations", "reservation_actions", "offerings"),
-    "cage": ("cages", "manifests", "manifest_lines", "scans", "voids"),
+    "cage": ("cages", "manifests", "manifest_lines", "scans", "redirects", "voids"),
 }
 TABLES = tuple(table for tables in GROUPS.values() for table in tables)
 
@@ -33,6 +33,19 @@ def rebuild(events, now):
         "scan": lambda e: cage.scan(e, fleet, supply),
         "void": cage.void,
     }
-    for event in events:
-        handlers[event["kind"]](event)
+    index = 0
+    while index < len(events):
+        event = events[index]
+        if event["kind"] != "redirect":
+            handlers[event["kind"]](event)
+            index += 1
+            continue
+        # All redirects sharing an effective minute are contiguous under the
+        # global order and adjudicated together against one pre-minute state.
+        minute = event["at"]
+        batch = []
+        while index < len(events) and events[index]["kind"] == "redirect" and events[index]["at"] == minute:
+            batch.append(events[index])
+            index += 1
+        cage.redirect_batch(batch)
     return fleet.tables() | supply.tables(now, fleet, cage) | cage.tables(now)

@@ -12,11 +12,12 @@ FIELDS = {
     "cage": ("slots", "cage"),
     "manifest": ("cage origin gate depot depart due items", "cage"),
     "scan": ("manifest vehicle stage channel site", "cage"),
+    "redirect": ("manifest vehicles from_depot to_depot", "cage"),
     "void": ("manifest", "cage"),
 }
 PRIORITY = {
     kind: index for index, kind in enumerate(
-        ("cage", "space", "check", "return", "load", "unload",
+        ("cage", "space", "check", "return", "load", "redirect", "unload",
          "reservation", "cancel", "redeem", "void", "manifest")
     )
 }
@@ -69,7 +70,7 @@ def validate(e, subsystem):
     require(set(e) == {"id", "at", "kind", *fields.split()}, f"{label}: wrong fields")
     require(token(e["id"]) and minute(e["at"]), f"{label}: invalid event identity or minute")
     for key in set(e) & {"vehicle", "station", "reservation", "proof", "cage", "origin",
-                         "gate", "depot", "manifest", "site"}:
+                         "gate", "depot", "manifest", "site", "from_depot", "to_depot"}:
         require(token(e[key]), f"{label}: invalid {key}")
     if kind == "return":
         require(e["outcome"] in ("docked", "uncertain"), f"{label}: invalid dock result")
@@ -98,3 +99,9 @@ def validate(e, subsystem):
     if kind == "scan":
         require(e["stage"] in ("load", "unload") and e["channel"] in ("gate", "public"),
                 f"{label}: invalid channel or stage")
+    if kind == "redirect":
+        require(isinstance(e["vehicles"], list) and 1 <= len(e["vehicles"]) <= 12,
+                f"{label}: invalid vehicle count")
+        require(all(token(v) for v in e["vehicles"]), f"{label}: invalid vehicle")
+        require(len(e["vehicles"]) == len(set(e["vehicles"])), f"{label}: duplicate vehicle")
+        require(e["from_depot"] != e["to_depot"], f"{label}: redirect depots must differ")

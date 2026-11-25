@@ -62,6 +62,21 @@ class Fleet:
         if location != "unconfirmed":
             vehicle["last_public_dock"] = site if location == "public" else None
 
+    def begin_receipt(self, key, depot, proof):
+        """Authorize a warehouse sign-off only against traceable transit custody.
+
+        A gate may end the rebalance custody of a vehicle only while the vehicle
+        is actually in transit under a valid load proof; the caller then places
+        it at the warehouse. Returns False for anything not in custody, so no
+        un-traceable sign-off can release a cage slot.
+        """
+        vehicle = self.vehicles.get(key)
+        if vehicle is None or vehicle["location"] != "transit" or vehicle["position_proof"] is None:
+            return False
+        vehicle["receiving_depot"] = depot
+        vehicle["receipt_proof"] = proof
+        return True
+
     def eligible(self, key, station, vehicle_type):
         v = self.vehicles[key]
         return v["location"] == "public" and v["site"] == station and v["cleared"] and v["type"] == vehicle_type
